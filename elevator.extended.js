@@ -13,7 +13,7 @@ var ElevatorExtended = function(options) {
     // Scroll vars
     var animation = null;
     var duration = null; // ms
-    var numberOfFloors = null;
+    var floor = null;
     var startTime = null;
     var startPosition = null;
     var endPosition = null;
@@ -51,6 +51,9 @@ var ElevatorExtended = function(options) {
         return options;
     }
 
+    function startPlayback(audioElem) {
+        return audioElem.play();
+    }
 
     function getVerticalOffset(element) {
         var verticalOffset = 0;
@@ -84,14 +87,16 @@ var ElevatorExtended = function(options) {
         }
     }
 
-    this.elevate = function() {
+    function elevate(event) {
         if (elevating) {
             return;
         }
 
+        floor = event.target.id.replace('button-', '');
+
         elevating = true;
         startPosition = document.documentElement.scrollTop || body.scrollTop;
-        updateEndPosition();
+        updateEndPosition(floor);
 
         duration = Math.abs(endPosition - startPosition) * 1.5;
 
@@ -101,6 +106,9 @@ var ElevatorExtended = function(options) {
         if (mainAudio) {
             mainAudio.play();
         }
+
+        floorAudio = new Audio('audio/floor' + floor + '.mp3');
+        floorAudio.setAttribute("preload", "true");
 
         if (startCallback) {
             startCallback();
@@ -121,7 +129,8 @@ var ElevatorExtended = function(options) {
         elevating = false;
     }
 
-    function updateEndPosition() {
+    function updateEndPosition(floor) {
+        var targetElement = document.querySelector('#floor-' + floor);
         endPosition = getVerticalOffset(targetElement);
     }
 
@@ -136,6 +145,10 @@ var ElevatorExtended = function(options) {
 
         if (endAudio) {
             endAudio.play();
+        }
+
+        if (floorAudio) {
+            floorAudio.play();
         }
 
         if (endCallback) {
@@ -161,7 +174,7 @@ var ElevatorExtended = function(options) {
 
     function bindElevateToElement(element) {
         if (element.addEventListener) {
-            element.addEventListener("click", that.elevate, false);
+            element.addEventListener("click", elevate, false);
         } else {
             // Older browsers
             element.attachEvent("onclick", function() {
@@ -187,12 +200,18 @@ var ElevatorExtended = function(options) {
             preloadAudio: true,
             loopAudio: true,
             startCallback: null,
-            endCallback: null
+            endCallback: null,
+            element: null,
+            targetElement: null,
+            floorAudio: null
         };
         _options = extendParameters(_options, defaults);
 
-        if (_options.element) {
-            bindElevateToElement(_options.element);
+        if (_options.floors) {
+            for (var floor = 0; floor < _options.floors; floor++) {
+                var element = document.querySelector('#button-' + floor);
+                bindElevateToElement(element);
+            }
         }
 
         if (_options.duration) {
@@ -210,14 +229,17 @@ var ElevatorExtended = function(options) {
 
         window.addEventListener("blur", onWindowBlur, false);
 
-        if (_options.mainAudio) {
-            mainAudio = new Audio(_options.mainAudio);
-            mainAudio.setAttribute("preload", _options.preloadAudio);
-            mainAudio.setAttribute("loop", _options.loopAudio);
-        }
+        // Set main elevator music
+        mainAudio = new Audio('audio/elevator.mp3');
+        mainAudio.setAttribute("preload", _options.preloadAudio);
+        mainAudio.setAttribute("loop", _options.loopAudio);
 
-        if (_options.endAudio) {
-            endAudio = new Audio(_options.endAudio);
+        // Set ding music
+        endAudio = new Audio('audio/ding.mp3');
+        endAudio.setAttribute("preload", "true");
+
+        if (_options.floorAudio) {
+            endAudio = new Audio(_options.floorAudio);
             endAudio.setAttribute("preload", "true");
         }
 
